@@ -1,6 +1,6 @@
 # geology-engine
 
-FastAPI service with a health check endpoint, deployed on Railway. Pushes to `main` trigger a deploy.
+FastAPI service with a health check endpoint, deployed on Railway.
 
 ## Local setup
 
@@ -28,32 +28,31 @@ The API will be available at `http://localhost:8000`.
 | `GET /health` | Health check (`{"status": "ok"}`)   |
 | `GET /docs`   | Interactive Swagger UI (auto-generated) |
 
-## Deployment (Railway)
+## Deploying to Railway
 
-### Deploy on push to main (recommended)
+Deploy from your machine using the Railway CLI.
 
-1. **Give Railway access to GitHub**  
-   Install the [Railway GitHub app](https://github.com/apps/railway-app/installations/new) for your user or org so Railway can see your repos.
+1. **Install the Railway CLI**  
+   See [Railway CLI docs](https://docs.railway.com/guides/cli) (e.g. `brew install railway`).
 
-2. **Connect this repo to your service**  
-   In the [Railway dashboard](https://railway.com): open project **geology-engine** → click the service → **Settings** → find **Service source** → **Connect Repo** → choose `JeffThorslund/geology-engine` and branch **main**. Save.
+2. **Log in and link the project**
+   ```bash
+   railway login
+   railway link
+   ```
+   When prompted, select the **geology-engine** project and the **production** environment.
 
-   After this, every push to `main` will trigger a new build and deploy.
+3. **Deploy**
+   ```bash
+   railway up --service geology-engine
+   ```
+   Use `--service geology-engine` because the project has more than one service. The CLI will upload the repo, Railway will build and deploy. For detached deploy (no log streaming): `railway up --service geology-engine -d`.
 
-3. **Public domain**  
-   In the service: **Settings** → **Networking** → generate a domain, or run `railway domain` from the repo (with `railway link` already set).
+4. **Public URL**  
+   Generate a domain in the dashboard: open the service → **Settings** → **Networking** → **Generate domain**. Or from the repo: `railway domain --service geology-engine`.
 
-4. **Environment variables**  
-   Use **Variables** in the dashboard or `railway variables`. The app uses `PORT` automatically (Railway sets it).
-
-### Manual deploy (CLI)
-
-From the repo root, with the project linked (`railway link`):
-
-```bash
-railway up            # streams build + deploy logs
-railway up -d         # detached
-```
+5. **Environment variables**  
+   Set in the dashboard under the service’s **Variables**, or with `railway variables --service geology-engine`. The app uses `PORT` automatically (Railway sets it).
 
 ## Repository
 
