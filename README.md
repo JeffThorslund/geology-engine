@@ -4,7 +4,7 @@ FastAPI service with a health check endpoint, deployed on Railway.
 
 ## Local setup
 
-Requires Python 3.11+ and Node 18+.
+Requires Python 3.11+.
 
 ```bash
 # Create and activate a virtual environment
@@ -27,24 +27,6 @@ The API will be available at `http://localhost:8000`.
 | `GET /`   | Service info and link to docs            |
 | `GET /health` | Health check (`{"status": "ok"}`)   |
 | `GET /docs`   | Interactive Swagger UI (auto-generated) |
-
-## TypeScript tooling
-
-Scripts and code-quality tooling live in `tooling/`.
-
-```bash
-cd tooling
-npm install
-
-# Run the health check against a running server
-npm run health                             # defaults to localhost:8000
-BASE_URL=https://your-app.up.railway.app npm run health
-
-# Lint / format / typecheck
-npm run lint
-npm run format
-npm run typecheck
-```
 
 ## Deployment (Railway)
 

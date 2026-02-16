@@ -13,10 +13,6 @@ build/
 .env
 *.env
 
-# Node / TypeScript
-node_modules/
-tooling/dist/
-
 # IDE
 .vscode/
 .idea/
