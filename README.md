@@ -1,6 +1,6 @@
 # geology-engine
 
-FastAPI service with a health check endpoint, deployed on Railway.
+FastAPI service with a health check endpoint, deployed on Railway. Pushes to `main` trigger a deploy.
 
 ## Local setup
 
@@ -30,30 +30,30 @@ The API will be available at `http://localhost:8000`.
 
 ## Deployment (Railway)
 
-1. Install the [Railway CLI](https://docs.railway.com/guides/cli) and log in:
+### Deploy on push to main (recommended)
 
-   ```bash
-   railway login
-   ```
+1. **Give Railway access to GitHub**  
+   Install the [Railway GitHub app](https://github.com/apps/railway-app/installations/new) for your user or org so Railway can see your repos.
 
-2. Initialize or link a Railway project from the repo root:
+2. **Connect this repo to your service**  
+   In the [Railway dashboard](https://railway.com): open project **geology-engine** → click the service → **Settings** → find **Service source** → **Connect Repo** → choose `JeffThorslund/geology-engine` and branch **main**. Save.
 
-   ```bash
-   railway init          # new project
-   # or
-   railway link          # existing project
-   ```
+   After this, every push to `main` will trigger a new build and deploy.
 
-3. Deploy:
+3. **Public domain**  
+   In the service: **Settings** → **Networking** → generate a domain, or run `railway domain` from the repo (with `railway link` already set).
 
-   ```bash
-   railway up            # streams build + deploy logs
-   railway up -d         # detached (returns immediately)
-   ```
+4. **Environment variables**  
+   Use **Variables** in the dashboard or `railway variables`. The app uses `PORT` automatically (Railway sets it).
 
-4. Generate a public domain in the Railway dashboard under **Settings > Networking**, or run `railway domain`.
+### Manual deploy (CLI)
 
-5. Environment variables (if any) are managed via `railway variables` or the dashboard. The app reads `PORT` at runtime (Railway injects it automatically).
+From the repo root, with the project linked (`railway link`):
+
+```bash
+railway up            # streams build + deploy logs
+railway up -d         # detached
+```
 
 ## Repository
 
