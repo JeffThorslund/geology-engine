@@ -1,0 +1,15 @@
+---
+description: Run the test suite after code changes
+globs: app/**/*.py, tests/**/*.py
+alwaysApply: false
+---
+
+# Run tests after changes
+
+After making or editing code in `app/` or `tests/`, run the test suite to confirm nothing is broken:
+
+```bash
+pytest tests/ -v
+```
+
+Run from the project root with the virtualenv activated (e.g. `source .venv/bin/activate`). If any test fails, fix the cause before considering the change complete.
