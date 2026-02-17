@@ -1,11 +1,10 @@
-import os
 from dataclasses import dataclass
 
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET", "")
+from app.config import get_settings
 
 _bearer_scheme = HTTPBearer()
 
@@ -26,7 +25,9 @@ async def get_supabase_user(
 
     Raises 401 if the token is missing, expired, or otherwise invalid.
     """
-    if not SUPABASE_JWT_SECRET:
+    settings = get_settings()
+    secret = settings.get_supabase_jwt_secret_str()
+    if not secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="SUPABASE_JWT_SECRET is not configured",
@@ -36,7 +37,7 @@ async def get_supabase_user(
     try:
         payload = jwt.decode(
             token,
-            SUPABASE_JWT_SECRET,
+            secret,
             algorithms=["HS256"],
             options={"require": ["exp", "sub"]},
         )

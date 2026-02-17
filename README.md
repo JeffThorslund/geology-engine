@@ -20,6 +20,8 @@ uvicorn app.main:app --reload
 
 The API will be available at `http://localhost:8000`.
 
+**Environment:** Config is loaded from the environment (and optionally a `.env` file). Copy `.env.example` to `.env` and set `SUPABASE_JWT_SECRET` for local development. Never commit `.env` (it is in `.gitignore`). The app will not start without a valid `SUPABASE_JWT_SECRET`.
+
 ### Testing
 
 ```bash

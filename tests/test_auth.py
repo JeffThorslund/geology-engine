@@ -7,8 +7,6 @@ and server error when JWT secret is unset.
 
 import pytest
 
-import app.auth as auth_module
-
 
 class TestPublicRoutes:
     """Endpoints that must remain accessible without authentication."""
@@ -76,8 +74,8 @@ class TestServerConfig:
 
     def test_me_returns_500_when_jwt_secret_unset(self, client, monkeypatch):
         """When SUPABASE_JWT_SECRET is not set, auth must not succeed (fail closed)."""
-        monkeypatch.setattr(auth_module, "SUPABASE_JWT_SECRET", "")
-        # Reload would be complex; we patched the module so next request uses ""
+        mock_settings = type("MockSettings", (), {"get_supabase_jwt_secret_str": lambda self: ""})()
+        monkeypatch.setattr("app.auth.get_settings", lambda: mock_settings)
         response = client.get(
             "/me",
             headers={"Authorization": "Bearer any-token"},
