@@ -18,14 +18,11 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Run server locally (production mode)
-python -m scripts.start
-
 # Run server with auto-reload (development mode)
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload
 
-# Or use convenience script (handles .env setup)
-./scripts/run-local.sh
+# Run server in production mode
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 ### Testing
@@ -62,8 +59,7 @@ Key implementation details:
 
 - `app/main.py` - FastAPI app with route definitions
 - `app/auth.py` - Supabase JWT verification dependency
-- `app/config.py` - Settings loaded from environment/`.env` file
-- `scripts/start.py` - Uvicorn entrypoint that reads PORT from environment
+- `app/config.py` - Settings loaded from environment/`.env` file (uses python-dotenv)
 - `tests/conftest.py` - Shared pytest fixtures (client, JWT tokens)
 - `tests/test_auth.py` - Comprehensive auth test suite covering all JWT scenarios
 
@@ -75,7 +71,8 @@ Required environment variable:
 For local development:
 1. Copy `.env.example` to `.env`
 2. Set `SUPABASE_JWT_SECRET` in `.env`
-3. Never commit `.env` (already in `.gitignore`)
+3. The app automatically loads `.env` via python-dotenv
+4. Never commit `.env` (already in `.gitignore`)
 
 The app will fail to start if `SUPABASE_JWT_SECRET` is not set (fail-closed security).
 
@@ -101,7 +98,7 @@ curl https://geology-engine-production.up.railway.app/health
 
 ### Railway Configuration
 
-- **Start command**: Defined in `railway.json` as `python -m scripts.start`
+- **Start command**: Defined in `railway.json` as `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - **Port**: Railway automatically sets `PORT` environment variable (default 8080)
 - **Domain**: `https://geology-engine-production.up.railway.app`
 - **Excluded files**: See `.railwayignore` - tests, cache, and dev files are not deployed

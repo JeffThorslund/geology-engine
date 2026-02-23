@@ -14,14 +14,16 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 # Install Python dependencies (ferreus_rbf comes from PyPI; pip picks the right wheel)
 pip install -r requirements.txt
 
-# Run the server locally
-python -m scripts.start
-# Or with reload: uvicorn app.main:app --reload --port 8000
+# Run the server with auto-reload (development)
+uvicorn app.main:app --reload
+
+# Or run in production mode
+uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-From the repo root you can also run `./scripts/run-local.sh` (uses `.env` or prompts for `SUPABASE_JWT_SECRET`). The API will be available at `http://localhost:8000`.
+The API will be available at `http://localhost:8000`.
 
-**Environment:** Config is loaded from the environment (and optionally a `.env` file). Copy `.env.example` to `.env` and set `SUPABASE_JWT_SECRET` for local development. Never commit `.env` (it is in `.gitignore`). The app will not start without a valid `SUPABASE_JWT_SECRET`.
+**Environment:** Config is loaded from the environment and automatically reads `.env` via python-dotenv. Copy `.env.example` to `.env` and set `SUPABASE_JWT_SECRET` for local development. Never commit `.env` (it is in `.gitignore`). The app will not start without a valid `SUPABASE_JWT_SECRET`.
 
 ### Testing
 
@@ -90,7 +92,7 @@ railway logs --service geology-engine
 ### Service Info
 
 - **Domain**: `https://geology-engine-production.up.railway.app`
-- **Start command**: `python -m scripts.start` (defined in `railway.json`)
+- **Start command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT` (defined in `railway.json`)
 - **Environment variables**: Managed via `railway variables --service geology-engine`
 
 Required variables:
