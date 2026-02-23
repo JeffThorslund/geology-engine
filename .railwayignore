@@ -1,0 +1,38 @@
+# Exclude test files and directories from Railway deployment
+tests/
+.pytest_cache/
+__pycache__/
+
+# Development files
+.cursor/
+.vscode/
+.idea/
+
+# Environment and secrets (already in .gitignore, but being explicit)
+.env
+.env.*
+!.env.example
+
+# Git and version control
+.git/
+.gitignore
+
+# Scripts not needed in production
+scripts/run-local.sh
+
+# Documentation (optional - uncomment if you want to exclude)
+# README.md
+# CLAUDE.md
+
+# Python artifacts
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# OS files
+.DS_Store
+Thumbs.db

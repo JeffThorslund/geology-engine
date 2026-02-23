@@ -11,14 +11,15 @@ Requires Python 3.11+.
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# Install Python dependencies
+# Install Python dependencies (ferreus_rbf comes from PyPI; pip picks the right wheel)
 pip install -r requirements.txt
 
 # Run the server locally
-uvicorn app.main:app --reload
+python -m scripts.start
+# Or with reload: uvicorn app.main:app --reload --port 8000
 ```
 
-The API will be available at `http://localhost:8000`.
+From the repo root you can also run `./scripts/run-local.sh` (uses `.env` or prompts for `SUPABASE_JWT_SECRET`). The API will be available at `http://localhost:8000`.
 
 **Environment:** Config is loaded from the environment (and optionally a `.env` file). Copy `.env.example` to `.env` and set `SUPABASE_JWT_SECRET` for local development. Never commit `.env` (it is in `.gitignore`). The app will not start without a valid `SUPABASE_JWT_SECRET`.
 
@@ -31,12 +32,12 @@ pytest tests/ -v
 
 ## API
 
-| Endpoint      | Auth     | Description                               |
-| ------------- | -------- | ----------------------------------------- |
-| `GET /`       | Public   | Service info and link to docs             |
-| `GET /health` | Public   | Health check (`{"status": "ok"}`)         |
-| `GET /docs`   | Public   | Interactive Swagger UI (auto-generated)   |
-| `GET /me`     | Required | Returns the authenticated user's identity |
+| Endpoint      | Auth     | Description                                                |
+| ------------- | -------- | ---------------------------------------------------------- |
+| `GET /`       | Public   | Service info and link to docs                              |
+| `GET /health` | Public   | Health check (`{"status": "ok"}`)                          |
+| `GET /docs`   | Public   | Interactive Swagger UI (auto-generated)                    |
+| `GET /me`     | Required | Returns the authenticated user's identity                  |
 
 ### Authentication
 
@@ -64,39 +65,40 @@ const res = await fetch("https://your-geology-engine.railway.app/me", {
 
 ## Deploying to Railway
 
-Deploy from your machine using the Railway CLI.
+**See [DEPLOY.md](./DEPLOY.md) for comprehensive deployment guide.**
 
-1. **Install the Railway CLI**  
-   See [Railway CLI docs](https://docs.railway.com/guides/cli) (e.g. `brew install railway`).
+### Quick Deploy
 
-2. **Log in and link the project**
+```bash
+# 1. Ensure tests pass
+pytest tests/ -v
 
-   ```bash
-   railway login
-   railway link
-   ```
+# 2. Deploy to Railway
+railway up --service geology-engine
 
-   When prompted, select the **geology-engine** project and the **production** environment.
+# 3. View deployment logs
+railway logs --service geology-engine
+```
 
-3. **Deploy**
+### Requirements
 
-   ```bash
-   railway up --service geology-engine
-   ```
+- Railway CLI installed (`brew install railway`)
+- Railway account and logged in (`railway login`)
+- Project linked (`railway link` - select geology-engine project)
+- `SUPABASE_JWT_SECRET` set in Railway variables
 
-   Use `--service geology-engine` because the project has more than one service. The CLI will upload the repo, Railway will build and deploy. For detached deploy (no log streaming): `railway up --service geology-engine -d`.
+### Service Info
 
-4. **Public URL**  
-   Generate a domain in the dashboard: open the service → **Settings** → **Networking** → **Generate domain**. Or from the repo: `railway domain --service geology-engine`.
+- **Domain**: `https://geology-engine-production.up.railway.app`
+- **Start command**: `python -m scripts.start` (defined in `railway.json`)
+- **Environment variables**: Managed via `railway variables --service geology-engine`
 
-5. **Environment variables**  
-   Set in the dashboard under the service’s **Variables**, or with `railway variables --service geology-engine`. The app uses `PORT` automatically (Railway sets it).
-6. Environment variables are managed via `railway variables` or the dashboard:
+Required variables:
 
-   | Variable              | Required | Description                                               |
-   | --------------------- | -------- | --------------------------------------------------------- |
-   | `PORT`                | Auto     | Injected by Railway automatically                         |
-   | `SUPABASE_JWT_SECRET` | Yes      | Supabase project JWT secret (Settings > API > JWT Secret) |
+| Variable              | Required | Description                                               |
+| --------------------- | -------- | --------------------------------------------------------- |
+| `PORT`                | Auto     | Injected by Railway automatically                         |
+| `SUPABASE_JWT_SECRET` | Yes      | Supabase project JWT secret (Settings > API > JWT Secret) |
 
 ## Repository
 
