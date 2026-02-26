@@ -1,39 +1,97 @@
 import numpy as np
 from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.auth import SupabaseUser, get_supabase_user
 from ferreus_rbf import RBFInterpolator
 from ferreus_rbf.interpolant_config import InterpolantSettings, RBFKernelType
 
-app = FastAPI(title="geology-engine")
+app = FastAPI(
+    title="geology-engine",
+    version="0.1.0",
+    description="FastAPI service for geological data processing and RBF interpolation",
+)
+
+
+class RootResponse(BaseModel):
+    """Response model for root endpoint."""
+
+    service: str = Field(..., description="Name of the service")
+    docs: str = Field(..., description="URL path to interactive API documentation")
+
+
+class HealthResponse(BaseModel):
+    """Response model for health check endpoint."""
+
+    status: str = Field(..., description="Health status of the service")
+    service: str = Field(..., description="Name of the service")
+
+
+class UserResponse(BaseModel):
+    """Response model for authenticated user endpoint."""
+
+    user_id: str = Field(..., description="Unique identifier for the authenticated user")
+    email: str | None = Field(None, description="Email address of the authenticated user")
+    role: str | None = Field(None, description="Role of the authenticated user")
 
 
 class RBFRequest(BaseModel):
     """Request model for RBF interpolation."""
 
-    training_points: list[list[float]]  # N x 2 array of [x, y] coordinates
-    training_values: list[float]  # N values corresponding to each point
-    test_points: list[list[float]]  # M x 2 array of points to interpolate
+    training_points: list[list[float]] = Field(
+        ...,
+        description="N x D array of training point coordinates (e.g., [[x1, y1], [x2, y2], ...])",
+    )
+    training_values: list[float] = Field(
+        ...,
+        description="N values corresponding to each training point",
+    )
+    test_points: list[list[float]] = Field(
+        ...,
+        description="M x D array of test point coordinates where values should be interpolated",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "training_points": [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+                "training_values": [0.0, 1.0, 1.0, 2.0],
+                "test_points": [[0.5, 0.5]],
+            }
+        }
+    )
 
 
 class RBFResponse(BaseModel):
     """Response model for RBF interpolation."""
 
-    interpolated_values: list[float]  # M interpolated values
+    interpolated_values: list[float] = Field(
+        ...,
+        description="M interpolated values at the test point locations",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "interpolated_values": [1.0],
+            }
+        }
+    )
 
 
-@app.get("/")
+@app.get("/", response_model=RootResponse)
 async def root():
+    """Root endpoint returning service information and documentation link."""
     return {"service": "geology-engine", "docs": "/docs"}
 
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 async def health():
+    """Health check endpoint to verify service is running."""
     return {"status": "ok", "service": "geology-engine"}
 
 
-@app.get("/me")
+@app.get("/me", response_model=UserResponse)
 async def me(user: SupabaseUser = Depends(get_supabase_user)):
     """Return the authenticated user's identity (requires valid Supabase JWT)."""
     return {"user_id": user.id, "email": user.email, "role": user.role}
