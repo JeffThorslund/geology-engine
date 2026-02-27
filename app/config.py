@@ -17,16 +17,16 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Supabase JWT secret (HS256) used to verify access tokens. Required for auth.
-    supabase_jwt_secret: SecretStr = Field(
+    # Shared secret used by callers as a Bearer token. Required.
+    geology_engine_api_key: SecretStr = Field(
         ...,
         min_length=1,
-        description="Supabase project JWT secret (Settings > API > JWT Secret)",
+        description="Shared API key sent by callers as a Bearer token",
     )
 
-    def get_supabase_jwt_secret_str(self) -> str:
-        """Use in code that needs the raw secret (e.g. jwt.decode). Never log this."""
-        return self.supabase_jwt_secret.get_secret_value()
+    def get_api_key_str(self) -> str:
+        """Return the raw key value. Never log this."""
+        return self.geology_engine_api_key.get_secret_value()
 
 
 _settings: Settings | None = None

@@ -47,14 +47,14 @@ Service: geology-engine
 
 ### 2. Set Environment Variables
 
-Set the required `SUPABASE_JWT_SECRET`:
+Set the required `GEOLOGY_ENGINE_API_KEY`:
 
 ```bash
 # For production (use your real Supabase JWT secret)
-railway variables set SUPABASE_JWT_SECRET="your-actual-supabase-jwt-secret" --service geology-engine
+railway variables set GEOLOGY_ENGINE_API_KEY="your-actual-supabase-jwt-secret" --service geology-engine
 
 # For testing (use a test secret)
-railway variables set SUPABASE_JWT_SECRET="test-jwt-secret-for-deployment-testing-only" --service geology-engine
+railway variables set GEOLOGY_ENGINE_API_KEY="test-jwt-secret-for-deployment-testing-only" --service geology-engine
 ```
 
 Verify variables are set:
@@ -63,7 +63,7 @@ Verify variables are set:
 railway variables --service geology-engine
 ```
 
-You should see `SUPABASE_JWT_SECRET` along with Railway's auto-injected variables.
+You should see `GEOLOGY_ENGINE_API_KEY` along with Railway's auto-injected variables.
 
 ### 3. Generate Public Domain
 
@@ -221,7 +221,7 @@ curl -H "Authorization: Bearer $TOKEN" $RAILWAY_DOMAIN/me
 railway logs --service geology-engine --follow
 
 # Common issues:
-# - Missing SUPABASE_JWT_SECRET: Set it with `railway variables set`
+# - Missing GEOLOGY_ENGINE_API_KEY: Set it with `railway variables set`
 # - Build errors: Check requirements.txt and Python version
 ```
 
@@ -249,7 +249,7 @@ railway logs --service geology-engine | grep PORT
 ## Quick Deploy Checklist
 
 - [ ] Tests pass locally (`pytest tests/ -v`)
-- [ ] `SUPABASE_JWT_SECRET` is set in Railway
+- [ ] `GEOLOGY_ENGINE_API_KEY` is set in Railway
 - [ ] Deploy with `railway up --service geology-engine`
 - [ ] Check logs for successful startup
 - [ ] Test public endpoints (`/`, `/health`)

@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+"""Simple API-key authentication for geology-engine."""
 
-import jwt
+import hmac
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -9,51 +10,23 @@ from app.config import get_settings
 _bearer_scheme = HTTPBearer()
 
 
-@dataclass
-class SupabaseUser:
-    """Decoded claims from a verified Supabase JWT."""
-
-    id: str
-    email: str | None = None
-    role: str | None = None
-
-
-async def get_supabase_user(
+async def verify_api_key(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
-) -> SupabaseUser:
-    """FastAPI dependency that verifies a Supabase access token.
+) -> None:
+    """FastAPI dependency that checks the Bearer token matches the API key.
 
-    Raises 401 if the token is missing, expired, or otherwise invalid.
+    Raises 401 if the token is missing or does not match.
     """
     settings = get_settings()
-    secret = settings.get_supabase_jwt_secret_str()
-    if not secret:
+    expected = settings.get_api_key_str()
+    if not expected:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="SUPABASE_JWT_SECRET is not configured",
+            detail="GEOLOGY_ENGINE_API_KEY is not configured",
         )
 
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(
-            token,
-            secret,
-            algorithms=["HS256"],
-            options={"require": ["exp", "sub"]},
-        )
-    except jwt.ExpiredSignatureError:
+    if not hmac.compare_digest(credentials.credentials, expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
+            detail="Invalid API key",
         )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
-
-    return SupabaseUser(
-        id=payload["sub"],
-        email=payload.get("email"),
-        role=payload.get("role"),
-    )

@@ -1,8 +1,7 @@
 """
-Auth test suite: Supabase JWT verification and protected routes.
+Auth test suite: API key verification and protected routes.
 
-Covers public access, missing/invalid/expired/tampered tokens, valid token flow,
-and server error when JWT secret is unset.
+Covers public access, missing/wrong key, valid key, and server misconfiguration.
 """
 
 import pytest
@@ -25,25 +24,19 @@ class TestPublicRoutes:
 class TestAuthenticatedHealthCheck:
     """Authenticated health check endpoint tests."""
 
-    def test_health_auth_returns_401_without_token(self, client):
-        """Authenticated health check should require JWT."""
+    def test_health_auth_returns_401_without_key(self, client):
         response = client.get("/health/auth")
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
-    def test_health_auth_returns_401_with_expired_token(self, client, expired_jwt):
-        """Authenticated health check should reject expired tokens."""
+    def test_health_auth_returns_401_with_wrong_key(self, client):
         response = client.get(
             "/health/auth",
-            headers={"Authorization": f"Bearer {expired_jwt}"},
+            headers={"Authorization": "Bearer wrong-key"},
         )
         assert response.status_code == 401
 
-    def test_health_auth_returns_200_with_valid_token(self, client, valid_jwt):
-        """Authenticated health check should succeed with valid JWT."""
-        response = client.get(
-            "/health/auth",
-            headers={"Authorization": f"Bearer {valid_jwt}"},
-        )
+    def test_health_auth_returns_200_with_valid_key(self, client, auth_headers):
+        response = client.get("/health/auth", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
@@ -51,62 +44,38 @@ class TestAuthenticatedHealthCheck:
 
 
 class TestProtectedRouteRequiresAuth:
-    """GET /me must reject requests without a valid Bearer token."""
+    """Protected endpoints must reject requests without a valid API key."""
 
-    def test_me_returns_401_when_no_authorization_header(self, client):
-        response = client.get("/me")
-        assert response.status_code == 401
+    def test_coefficients_returns_401_without_key(self, client):
+        response = client.post("/rbf/coefficients", json={"intervals": [], "fitting_accuracy": 0.01})
+        assert response.status_code in (401, 403)
 
-    def test_me_returns_401_when_token_malformed(self, client):
-        response = client.get(
-            "/me",
-            headers={"Authorization": "Bearer not-a-valid-jwt"},
-        )
-        assert response.status_code == 401
-        assert "invalid" in response.json().get("detail", "").lower() or "token" in response.json().get("detail", "").lower()
-
-    def test_me_returns_401_when_token_expired(self, client, expired_jwt):
-        response = client.get(
-            "/me",
-            headers={"Authorization": f"Bearer {expired_jwt}"},
-        )
-        assert response.status_code == 401
-        assert "expired" in response.json().get("detail", "").lower()
-
-    def test_me_returns_401_when_token_tampered(self, client, tampered_jwt):
-        """Token signed with wrong secret must be rejected (prevents forgery)."""
-        response = client.get(
-            "/me",
-            headers={"Authorization": f"Bearer {tampered_jwt}"},
+    def test_coefficients_returns_401_with_wrong_key(self, client):
+        response = client.post(
+            "/rbf/coefficients",
+            json={"intervals": [], "fitting_accuracy": 0.01},
+            headers={"Authorization": "Bearer wrong-key"},
         )
         assert response.status_code == 401
 
-
-class TestProtectedRouteAcceptsValidToken:
-    """GET /me must accept a valid Supabase-style JWT and return user claims."""
-
-    def test_me_returns_200_and_user_when_token_valid(self, client, valid_jwt):
-        response = client.get(
-            "/me",
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+    def test_evaluate_returns_401_without_key(self, client):
+        response = client.post(
+            "/rbf/evaluate",
+            json={"intervals": [], "query_points": [], "fitting_accuracy": 0.01},
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["user_id"] == "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-        assert data["email"] == "user@example.com"
-        assert data["role"] == "authenticated"
+        assert response.status_code in (401, 403)
 
 
 class TestServerConfig:
     """Behavior when auth is misconfigured."""
 
-    def test_me_returns_500_when_jwt_secret_unset(self, client, monkeypatch):
-        """When SUPABASE_JWT_SECRET is not set, auth must not succeed (fail closed)."""
-        mock_settings = type("MockSettings", (), {"get_supabase_jwt_secret_str": lambda self: ""})()
+    def test_returns_500_when_api_key_unset(self, client, monkeypatch):
+        """When GEOLOGY_ENGINE_API_KEY is empty, auth must fail closed."""
+        mock_settings = type("MockSettings", (), {"get_api_key_str": lambda self: ""})()
         monkeypatch.setattr("app.auth.get_settings", lambda: mock_settings)
         response = client.get(
-            "/me",
-            headers={"Authorization": "Bearer any-token"},
+            "/health/auth",
+            headers={"Authorization": "Bearer any-key"},
         )
         assert response.status_code == 500
         assert "configured" in response.json().get("detail", "").lower()

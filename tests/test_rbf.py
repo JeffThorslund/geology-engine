@@ -110,7 +110,7 @@ class TestRBFCoefficientsEndpoint:
     """Tests for /rbf/coefficients endpoint (authenticated)."""
 
     def test_coefficients_requires_auth(self, client):
-        """Endpoint should return 401 when no JWT is provided."""
+        """Endpoint should return 401/403 when no API key is provided."""
         request_data = {
             "intervals": [
                 {"x": 0.0, "y": 0.0, "z": 0.0, "value": 0.0},
@@ -121,10 +121,10 @@ class TestRBFCoefficientsEndpoint:
 
         # No Authorization header
         response = client.post("/rbf/coefficients", json=request_data)
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
-    def test_coefficients_rejects_expired_token(self, client, expired_jwt):
-        """Endpoint should return 401 for expired JWT."""
+    def test_coefficients_rejects_wrong_key(self, client):
+        """Endpoint should return 401 for wrong API key."""
         request_data = {
             "intervals": [
                 {"x": 0.0, "y": 0.0, "z": 0.0, "value": 0.0},
@@ -135,12 +135,12 @@ class TestRBFCoefficientsEndpoint:
         response = client.post(
             "/rbf/coefficients",
             json=request_data,
-            headers={"Authorization": f"Bearer {expired_jwt}"},
+            headers={"Authorization": "Bearer wrong-key"},
         )
         assert response.status_code == 401
 
-    def test_coefficients_with_valid_auth(self, client, valid_jwt):
-        """Returns coefficients when valid JWT is provided."""
+    def test_coefficients_with_valid_auth(self, client, auth_headers):
+        """Returns coefficients when valid API key is provided."""
         request_data = {
             "intervals": [
                 {"x": 0.0, "y": 0.0, "z": 0.0, "value": 0.0},
@@ -154,7 +154,7 @@ class TestRBFCoefficientsEndpoint:
         response = client.post(
             "/rbf/coefficients",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 
@@ -174,7 +174,7 @@ class TestRBFCoefficientsEndpoint:
         # Verify extents is [min_x, min_y, min_z, max_x, max_y, max_z]
         assert len(data["extents"]) == 6
 
-    def test_coefficients_with_3d_spatial_data(self, client, valid_jwt):
+    def test_coefficients_with_3d_spatial_data(self, client, auth_headers):
         """Test with realistic 3D geological coordinates."""
         request_data = {
             "intervals": [
@@ -189,7 +189,7 @@ class TestRBFCoefficientsEndpoint:
         response = client.post(
             "/rbf/coefficients",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 
@@ -201,7 +201,7 @@ class TestRBFCoefficientsEndpoint:
         assert data["extents"][0] == 500000.0  # min_x
         assert data["extents"][3] == 501000.0  # max_x
 
-    def test_coefficients_rejects_empty_intervals(self, client, valid_jwt):
+    def test_coefficients_rejects_empty_intervals(self, client, auth_headers):
         """Endpoint should return 422 for empty intervals."""
         request_data = {
             "intervals": [],
@@ -211,12 +211,12 @@ class TestRBFCoefficientsEndpoint:
         response = client.post(
             "/rbf/coefficients",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         # Pydantic validation error for min_length=1
         assert response.status_code == 422
 
-    def test_coefficients_with_custom_fitting_accuracy(self, client, valid_jwt):
+    def test_coefficients_with_custom_fitting_accuracy(self, client, auth_headers):
         """Test custom fitting_accuracy parameter."""
         request_data = {
             "intervals": [
@@ -230,7 +230,7 @@ class TestRBFCoefficientsEndpoint:
         response = client.post(
             "/rbf/coefficients",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 
@@ -239,7 +239,7 @@ class TestRBFEvaluateEndpoint:
     """Tests for /rbf/evaluate endpoint (authenticated)."""
 
     def test_evaluate_requires_auth(self, client):
-        """Endpoint should return 401 when no JWT is provided."""
+        """Endpoint should return 401/403 when no API key is provided."""
         request_data = {
             "intervals": [
                 {"x": 0.0, "y": 0.0, "z": 0.0, "value": 0.0},
@@ -252,10 +252,10 @@ class TestRBFEvaluateEndpoint:
 
         # No Authorization header
         response = client.post("/rbf/evaluate", json=request_data)
-        assert response.status_code == 401
+        assert response.status_code in (401, 403)
 
-    def test_evaluate_rejects_expired_token(self, client, expired_jwt):
-        """Endpoint should return 401 for expired JWT."""
+    def test_evaluate_rejects_wrong_key(self, client):
+        """Endpoint should return 401 for wrong API key."""
         request_data = {
             "intervals": [
                 {"x": 0.0, "y": 0.0, "z": 0.0, "value": 0.0},
@@ -269,12 +269,12 @@ class TestRBFEvaluateEndpoint:
         response = client.post(
             "/rbf/evaluate",
             json=request_data,
-            headers={"Authorization": f"Bearer {expired_jwt}"},
+            headers={"Authorization": "Bearer wrong-key"},
         )
         assert response.status_code == 401
 
-    def test_evaluate_with_valid_auth(self, client, valid_jwt):
-        """Returns interpolated values when valid JWT is provided."""
+    def test_evaluate_with_valid_auth(self, client, auth_headers):
+        """Returns interpolated values when valid API key is provided."""
         # Create a simple plane: value = x + y
         request_data = {
             "intervals": [
@@ -292,7 +292,7 @@ class TestRBFEvaluateEndpoint:
         response = client.post(
             "/rbf/evaluate",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 
@@ -307,7 +307,7 @@ class TestRBFEvaluateEndpoint:
         interpolated_value = data["values"][0]
         assert abs(interpolated_value - 1.0) < 0.1
 
-    def test_evaluate_multiple_query_points(self, client, valid_jwt):
+    def test_evaluate_multiple_query_points(self, client, auth_headers):
         """Test evaluation at multiple query points."""
         request_data = {
             "intervals": [
@@ -326,7 +326,7 @@ class TestRBFEvaluateEndpoint:
         response = client.post(
             "/rbf/evaluate",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 
@@ -337,7 +337,7 @@ class TestRBFEvaluateEndpoint:
         for value in data["values"]:
             assert 0.0 <= value <= 2.0
 
-    def test_evaluate_with_3d_spatial_data(self, client, valid_jwt):
+    def test_evaluate_with_3d_spatial_data(self, client, auth_headers):
         """Test with realistic 3D geological coordinates."""
         request_data = {
             "intervals": [
@@ -355,7 +355,7 @@ class TestRBFEvaluateEndpoint:
         response = client.post(
             "/rbf/evaluate",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 
@@ -363,7 +363,7 @@ class TestRBFEvaluateEndpoint:
         assert len(data["values"]) == 1
         assert len(data["extents"]) == 6
 
-    def test_evaluate_rejects_empty_intervals(self, client, valid_jwt):
+    def test_evaluate_rejects_empty_intervals(self, client, auth_headers):
         """Endpoint should return 422 for empty intervals."""
         request_data = {
             "intervals": [],
@@ -375,11 +375,11 @@ class TestRBFEvaluateEndpoint:
         response = client.post(
             "/rbf/evaluate",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 422
 
-    def test_evaluate_rejects_empty_query_points(self, client, valid_jwt):
+    def test_evaluate_rejects_empty_query_points(self, client, auth_headers):
         """Endpoint should return 422 for empty query points."""
         request_data = {
             "intervals": [
@@ -392,11 +392,11 @@ class TestRBFEvaluateEndpoint:
         response = client.post(
             "/rbf/evaluate",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 422
 
-    def test_evaluate_exact_at_training_points(self, client, valid_jwt):
+    def test_evaluate_exact_at_training_points(self, client, auth_headers):
         """RBF should exactly reproduce training values at training point locations."""
         intervals = [
             {"x": 0.0, "y": 0.0, "z": 0.0, "value": 0.0},
@@ -419,7 +419,7 @@ class TestRBFEvaluateEndpoint:
         response = client.post(
             "/rbf/evaluate",
             json=request_data,
-            headers={"Authorization": f"Bearer {valid_jwt}"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
 

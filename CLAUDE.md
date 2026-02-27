@@ -46,7 +46,7 @@ pytest tests/test_auth.py::TestPublicRoutes::test_root_returns_200_without_auth 
 
 The app uses Supabase JWT (HS256) for authentication:
 
-1. `app/config.py` - Settings loaded from environment using pydantic-settings. Requires `SUPABASE_JWT_SECRET` to be set
+1. `app/config.py` - Settings loaded from environment using pydantic-settings. Requires `GEOLOGY_ENGINE_API_KEY` env var
 2. `app/auth.py` - Provides `get_supabase_user` dependency that verifies Bearer tokens and extracts user claims (id, email, role)
 3. Protected endpoints use `Depends(get_supabase_user)` to enforce authentication
 
@@ -157,15 +157,15 @@ Response (defined in `app/rbf_models.py:RBFEvaluateResponse`):
 ### Environment Configuration
 
 Required environment variable:
-- `SUPABASE_JWT_SECRET` - Supabase project JWT secret (found in Supabase dashboard: Settings > API > JWT Secret)
+- `GEOLOGY_ENGINE_API_KEY` - JWT secret used to verify Bearer tokens
 
 For local development:
 1. Copy `.env.example` to `.env`
-2. Set `SUPABASE_JWT_SECRET` in `.env`
+2. Set `GEOLOGY_ENGINE_API_KEY` in `.env`
 3. The app automatically loads `.env` via python-dotenv
 4. Never commit `.env` (already in `.gitignore`)
 
-The app will fail to start if `SUPABASE_JWT_SECRET` is not set (fail-closed security).
+The app will fail to start if `GEOLOGY_ENGINE_API_KEY` is not set (fail-closed security).
 
 ## Deployment
 
@@ -189,7 +189,8 @@ curl https://geology-engine-production.up.railway.app/health
 
 ### Railway Configuration
 
-- **Start command**: Defined in `railway.json` as `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Builder**: Dockerfile (Ubuntu 24.04, required for `ferreus_rbf` glibc 2.39 dependency)
+- **Start command**: Defined in `Dockerfile` CMD as `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 - **Port**: Railway automatically sets `PORT` environment variable (default 8080)
 - **Domain**: `https://geology-engine-production.up.railway.app`
 - **Excluded files**: See `.railwayignore` - tests, cache, and dev files are not deployed
@@ -197,7 +198,7 @@ curl https://geology-engine-production.up.railway.app/health
 ### Environment Variables
 
 Required Railway variables:
-- `SUPABASE_JWT_SECRET` - Set via `railway variables set SUPABASE_JWT_SECRET="secret" --service geology-engine`
+- `GEOLOGY_ENGINE_API_KEY` - Set via `railway variables set GEOLOGY_ENGINE_API_KEY="secret" --service geology-engine`
 
 ### Testing Deployed Authentication
 
@@ -209,7 +210,7 @@ python scripts/generate_test_jwt.py
 curl -H "Authorization: Bearer <token>" https://geology-engine-production.up.railway.app/me
 ```
 
-The JWT must be signed with the same `SUPABASE_JWT_SECRET` set in Railway variables.
+The JWT must be signed with the same `GEOLOGY_ENGINE_API_KEY` set in Railway variables.
 
 ## Testing Strategy
 
@@ -219,4 +220,4 @@ Tests use pytest with FastAPI's TestClient. The test suite in `tests/test_auth.p
 - Valid tokens returning correct user claims
 - Server error when JWT secret is misconfigured
 
-Test fixtures create JWTs programmatically using the PyJWT library. The `SUPABASE_JWT_SECRET` is set in `tests/conftest.py` before importing the app to ensure consistent test behavior.
+Test fixtures create JWTs programmatically using the PyJWT library. The `GEOLOGY_ENGINE_API_KEY` is set in `tests/conftest.py` before importing the app to ensure consistent test behavior.

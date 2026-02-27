@@ -2,7 +2,7 @@ import numpy as np
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.auth import SupabaseUser, get_supabase_user
+from app.auth import verify_api_key
 from app.rbf_models import (
     RBFCoefficientsRequest,
     RBFCoefficientsResponse,
@@ -36,14 +36,6 @@ class HealthResponse(BaseModel):
 
     status: str = Field(..., description="Health status of the service")
     service: str = Field(..., description="Name of the service")
-
-
-class UserResponse(BaseModel):
-    """Response model for authenticated user endpoint."""
-
-    user_id: str = Field(..., description="Unique identifier for the authenticated user")
-    email: str | None = Field(None, description="Email address of the authenticated user")
-    role: str | None = Field(None, description="Role of the authenticated user")
 
 
 class RBFRequest(BaseModel):
@@ -103,20 +95,14 @@ async def health():
 
 
 @app.get("/health/auth", response_model=HealthResponse)
-async def health_auth(user: SupabaseUser = Depends(get_supabase_user)):
+async def health_auth(_: None = Depends(verify_api_key)):
     """
     Authenticated health check endpoint.
 
     Verifies that both the service is running AND authentication is working.
-    Requires a valid Supabase JWT. Useful for testing that auth is configured correctly.
+    Requires a valid API key. Useful for testing that auth is configured correctly.
     """
     return {"status": "ok", "service": "geology-engine"}
-
-
-@app.get("/me", response_model=UserResponse)
-async def me(user: SupabaseUser = Depends(get_supabase_user)):
-    """Return the authenticated user's identity (requires valid Supabase JWT)."""
-    return {"user_id": user.id, "email": user.email, "role": user.role}
 
 
 @app.post("/rbf/interpolate", response_model=RBFResponse)
@@ -173,7 +159,7 @@ async def rbf_interpolate(request: RBFRequest):
 @app.post("/rbf/coefficients", response_model=RBFCoefficientsResponse)
 async def rbf_coefficients(
     request: RBFCoefficientsRequest,
-    user: SupabaseUser = Depends(get_supabase_user),
+    _: None = Depends(verify_api_key),
 ):
     """
     Fit RBF model from spatial intervals and return coefficients.
@@ -182,7 +168,7 @@ async def rbf_coefficients(
     This is more compact than sending pre-rendered geometry and allows
     the client to evaluate the function at arbitrary points locally.
 
-    Requires authentication via Supabase JWT.
+    Requires a valid API key.
 
     Example:
         Input: 3D spatial intervals with commodity values
@@ -250,7 +236,7 @@ async def rbf_coefficients(
 @app.post("/rbf/evaluate", response_model=RBFEvaluateResponse)
 async def rbf_evaluate(
     request: RBFEvaluateRequest,
-    user: SupabaseUser = Depends(get_supabase_user),
+    _: None = Depends(verify_api_key),
 ):
     """
     Fit RBF model from spatial intervals and evaluate at query points.
@@ -258,7 +244,7 @@ async def rbf_evaluate(
     Performs server-side RBF evaluation. The client sends training data
     (spatial intervals) and query points, and receives interpolated values.
 
-    Requires authentication via Supabase JWT.
+    Requires a valid API key.
 
     Example:
         Input: 3D spatial intervals + query points
