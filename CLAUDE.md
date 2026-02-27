@@ -60,8 +60,99 @@ Key implementation details:
 - `app/main.py` - FastAPI app with route definitions
 - `app/auth.py` - Supabase JWT verification dependency
 - `app/config.py` - Settings loaded from environment/`.env` file (uses python-dotenv)
+- `app/rbf_models.py` - Pydantic models for RBF endpoints (SpatialInterval, request/response schemas)
+- `app/rbf_service.py` - Business logic layer for RBF operations (fitting, evaluation, coefficient extraction)
 - `tests/conftest.py` - Shared pytest fixtures (client, JWT tokens)
 - `tests/test_auth.py` - Comprehensive auth test suite covering all JWT scenarios
+- `tests/test_rbf.py` - RBF interpolation tests for both public and authenticated endpoints
+
+### RBF Interpolation Endpoints
+
+The service provides three RBF (Radial Basis Function) interpolation endpoints using the `ferreus_rbf` library:
+
+#### 1. POST `/rbf/interpolate` (Public)
+**No authentication required.** Legacy endpoint for simple RBF interpolation.
+
+Request format:
+```json
+{
+  "training_points": [[x1, y1], [x2, y2], ...],
+  "training_values": [v1, v2, ...],
+  "test_points": [[x_test1, y_test1], ...]
+}
+```
+
+Response: `{"interpolated_values": [value1, value2, ...]}`
+
+#### 2. POST `/rbf/coefficients` (Authenticated)
+**Requires Supabase JWT.** Fits RBF model from 3D spatial intervals and returns model coefficients for client-side evaluation.
+
+Request format (defined in `app/rbf_models.py:RBFCoefficientsRequest`):
+```json
+{
+  "intervals": [
+    {"x": 500000.0, "y": 4500000.0, "z": 100.0, "value": 0.0},
+    {"x": 501000.0, "y": 4500000.0, "z": 100.0, "value": 1.0}
+  ],
+  "fitting_accuracy": 0.01
+}
+```
+
+Response (defined in `app/rbf_models.py:RBFCoefficientsResponse`):
+```json
+{
+  "source_points": [[x1, y1, z1], [x2, y2, z2], ...],
+  "point_coefficients": [[c1], [c2], ...],
+  "poly_coefficients": [[p1], ...] or null,
+  "kernel_type": "linear",
+  "polynomial_degree": 0,
+  "nugget": 0.0,
+  "translation_factor": [tx, ty, tz],
+  "scale_factor": [sx, sy, sz],
+  "extents": [min_x, min_y, min_z, max_x, max_y, max_z]
+}
+```
+
+**Use case**: Client downloads coefficients once and evaluates the RBF function locally in the browser.
+
+#### 3. POST `/rbf/evaluate` (Authenticated)
+**Requires Supabase JWT.** Fits RBF model from 3D spatial intervals and evaluates at query points.
+
+Request format (defined in `app/rbf_models.py:RBFEvaluateRequest`):
+```json
+{
+  "intervals": [
+    {"x": 500000.0, "y": 4500000.0, "z": 100.0, "value": 0.0},
+    {"x": 501000.0, "y": 4500000.0, "z": 100.0, "value": 1.0}
+  ],
+  "query_points": [
+    {"x": 500500.0, "y": 4500500.0, "z": 125.0}
+  ],
+  "fitting_accuracy": 0.01
+}
+```
+
+Response (defined in `app/rbf_models.py:RBFEvaluateResponse`):
+```json
+{
+  "values": [interpolated_value1, interpolated_value2, ...],
+  "extents": [min_x, min_y, min_z, max_x, max_y, max_z]
+}
+```
+
+**Use case**: Server-side RBF evaluation. Client sends training data and query points, receives interpolated values.
+
+#### RBF Implementation Details
+
+- **Data model**: `SpatialInterval` represents 3D points (x, y, z) with commodity values (signed distance)
+- **Kernel**: Linear RBF kernel (`RBFKernelType.Linear`)
+- **Fitting accuracy**: Configurable absolute accuracy (default: 0.01)
+- **Service layer**: `app/rbf_service.py` handles RBF fitting, coefficient extraction, and evaluation
+  - `fit_rbf_from_intervals()` - Converts SpatialIntervals to numpy arrays, fits RBF model
+  - `extract_coefficients()` - Saves model to temp JSON, extracts coefficients, ensures proper cleanup
+  - `evaluate_at_query_points()` - Fits RBF and evaluates at query points
+- **File management**: Uses `tempfile.NamedTemporaryFile` with try/finally for guaranteed cleanup
+- **Coefficient format**: Handles ferreus_rbf's JSON array format (dict with `nrows`, `ncols`, `data`)
 
 ### Environment Configuration
 

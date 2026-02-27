@@ -22,6 +22,34 @@ class TestPublicRoutes:
         assert response.json()["status"] == "ok"
 
 
+class TestAuthenticatedHealthCheck:
+    """Authenticated health check endpoint tests."""
+
+    def test_health_auth_returns_401_without_token(self, client):
+        """Authenticated health check should require JWT."""
+        response = client.get("/health/auth")
+        assert response.status_code == 401
+
+    def test_health_auth_returns_401_with_expired_token(self, client, expired_jwt):
+        """Authenticated health check should reject expired tokens."""
+        response = client.get(
+            "/health/auth",
+            headers={"Authorization": f"Bearer {expired_jwt}"},
+        )
+        assert response.status_code == 401
+
+    def test_health_auth_returns_200_with_valid_token(self, client, valid_jwt):
+        """Authenticated health check should succeed with valid JWT."""
+        response = client.get(
+            "/health/auth",
+            headers={"Authorization": f"Bearer {valid_jwt}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["service"] == "geology-engine"
+
+
 class TestProtectedRouteRequiresAuth:
     """GET /me must reject requests without a valid Bearer token."""
 

@@ -32,38 +32,18 @@ The API will be available at `http://localhost:8000`.
 pytest tests/ -v
 ```
 
-## API
+## API Documentation
 
-| Endpoint      | Auth     | Description                                                |
-| ------------- | -------- | ---------------------------------------------------------- |
-| `GET /`       | Public   | Service info and link to docs                              |
-| `GET /health` | Public   | Health check (`{"status": "ok"}`)                          |
-| `GET /docs`   | Public   | Interactive Swagger UI (auto-generated)                    |
-| `GET /me`     | Required | Returns the authenticated user's identity                  |
+Interactive API documentation is available at:
+- **Swagger UI**: `http://localhost:8000/docs` (local) or `https://geology-engine-production.up.railway.app/docs` (production)
+- **ReDoc**: `http://localhost:8000/redoc` (local) or `https://geology-engine-production.up.railway.app/redoc` (production)
 
-### Authentication
+The API includes:
+- Public health check and service info endpoints
+- Authenticated endpoints (require Supabase JWT): `/health/auth`, `/me`, `/rbf/coefficients`, `/rbf/evaluate`
+- Public RBF interpolation endpoint: `/rbf/interpolate`
 
-Protected endpoints require a valid **Supabase JWT** in the `Authorization` header:
-
-```
-Authorization: Bearer <access_token>
-```
-
-The token is verified using the Supabase project's JWT secret (HS256). If the token is missing, expired, or invalid the API returns `401 Unauthorized`.
-
-#### Calling from Next.js
-
-```ts
-const {
-  data: { session },
-} = await supabase.auth.getSession();
-
-const res = await fetch("https://your-geology-engine.railway.app/me", {
-  headers: {
-    Authorization: `Bearer ${session?.access_token}`,
-  },
-});
-```
+For detailed request/response schemas and examples, visit the `/docs` endpoint.
 
 ## Deploying to Railway
 

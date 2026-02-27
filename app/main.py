@@ -3,6 +3,17 @@ from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.auth import SupabaseUser, get_supabase_user
+from app.rbf_models import (
+    RBFCoefficientsRequest,
+    RBFCoefficientsResponse,
+    RBFEvaluateRequest,
+    RBFEvaluateResponse,
+)
+from app.rbf_service import (
+    evaluate_at_query_points,
+    extract_coefficients,
+    fit_rbf_from_intervals,
+)
 from ferreus_rbf import RBFInterpolator
 from ferreus_rbf.interpolant_config import InterpolantSettings, RBFKernelType
 
@@ -91,6 +102,17 @@ async def health():
     return {"status": "ok", "service": "geology-engine"}
 
 
+@app.get("/health/auth", response_model=HealthResponse)
+async def health_auth(user: SupabaseUser = Depends(get_supabase_user)):
+    """
+    Authenticated health check endpoint.
+
+    Verifies that both the service is running AND authentication is working.
+    Requires a valid Supabase JWT. Useful for testing that auth is configured correctly.
+    """
+    return {"status": "ok", "service": "geology-engine"}
+
+
 @app.get("/me", response_model=UserResponse)
 async def me(user: SupabaseUser = Depends(get_supabase_user)):
     """Return the authenticated user's identity (requires valid Supabase JWT)."""
@@ -146,3 +168,116 @@ async def rbf_interpolate(request: RBFRequest):
         values = interpolated.tolist()
 
     return RBFResponse(interpolated_values=values)
+
+
+@app.post("/rbf/coefficients", response_model=RBFCoefficientsResponse)
+async def rbf_coefficients(
+    request: RBFCoefficientsRequest,
+    user: SupabaseUser = Depends(get_supabase_user),
+):
+    """
+    Fit RBF model from spatial intervals and return coefficients.
+
+    Returns the RBF function coefficients for client-side evaluation.
+    This is more compact than sending pre-rendered geometry and allows
+    the client to evaluate the function at arbitrary points locally.
+
+    Requires authentication via Supabase JWT.
+
+    Example:
+        Input: 3D spatial intervals with commodity values
+        Output: Model coefficients, source points, kernel config, extents
+    """
+    try:
+        # Fit RBF model from intervals
+        rbf_interpolator, extents = fit_rbf_from_intervals(
+            request.intervals,
+            request.fitting_accuracy,
+        )
+
+        # Extract coefficients from the fitted model
+        model_data = extract_coefficients(rbf_interpolator)
+
+        # Build response from extracted model data
+        # Note: ferreus_rbf saves arrays as dicts with 'data' field (flat array)
+        def extract_array(array_dict):
+            """Extract and reshape list from ferreus_rbf array dict format."""
+            if isinstance(array_dict, dict) and "data" in array_dict:
+                nrows = array_dict.get("nrows", 1)
+                ncols = array_dict.get("ncols", 1)
+                data = array_dict["data"]
+
+                # Reshape flat array to 2D (always return 2D structure)
+                reshaped = []
+                for i in range(nrows):
+                    row = data[i * ncols : (i + 1) * ncols]
+                    reshaped.append(row)
+                return reshaped
+            return array_dict
+
+        coefficients_data = model_data.get("coefficients", {})
+
+        response_data = {
+            "source_points": extract_array(model_data.get("points", [])),
+            "point_coefficients": extract_array(
+                coefficients_data.get("point_coefficients", [])
+            ),
+            "poly_coefficients": extract_array(
+                coefficients_data.get("poly_coefficients", None)
+            ),
+            "kernel_type": "linear",
+            "polynomial_degree": model_data.get("interpolant_settings", {}).get(
+                "polynomial_degree", 0
+            ),
+            "nugget": model_data.get("interpolant_settings", {}).get("nugget", 0.0),
+            "translation_factor": extract_array(
+                model_data.get("translation_factor", [0.0, 0.0, 0.0])
+            ),
+            "scale_factor": extract_array(
+                model_data.get("scale_factor", [1.0, 1.0, 1.0])
+            ),
+            "extents": extents.tolist(),
+        }
+
+        return RBFCoefficientsResponse(**response_data)
+
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RBF fitting failed: {str(e)}")
+
+
+@app.post("/rbf/evaluate", response_model=RBFEvaluateResponse)
+async def rbf_evaluate(
+    request: RBFEvaluateRequest,
+    user: SupabaseUser = Depends(get_supabase_user),
+):
+    """
+    Fit RBF model from spatial intervals and evaluate at query points.
+
+    Performs server-side RBF evaluation. The client sends training data
+    (spatial intervals) and query points, and receives interpolated values.
+
+    Requires authentication via Supabase JWT.
+
+    Example:
+        Input: 3D spatial intervals + query points
+        Output: Interpolated commodity values at query points
+    """
+    try:
+        # Fit RBF and evaluate at query points
+        values, extents = evaluate_at_query_points(
+            request.intervals,
+            request.query_points,
+            request.fitting_accuracy,
+        )
+
+        return RBFEvaluateResponse(
+            values=values,
+            extents=extents.tolist(),
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RBF evaluation failed: {str(e)}")
