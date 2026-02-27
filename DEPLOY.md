@@ -103,12 +103,21 @@ Should contain:
 ```json
 {
   "$schema": "https://railway.com/railway.schema.json",
-  "build": {},
-  "deploy": {
-    "startCommand": "python -m scripts.start"
-  }
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
+  "deploy": {}
 }
 ```
+
+The start command is defined in the Dockerfile's `CMD` directive rather than in `railway.json`
+because the Dockerfile uses shell form to properly expand the `$PORT` environment variable.
+
+> **Note:** The `dockerfilePath` is required because `ferreus_rbf` publishes Linux wheels
+> tagged `manylinux_2_39`, which need glibc >= 2.39. The Dockerfile uses Ubuntu 24.04
+> (glibc 2.39) to satisfy this. Without it, Railway defaults to Nixpacks, which has an
+> older glibc and cannot install `ferreus_rbf`.
 
 ### Step 2: Deploy
 

@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y \
     python3.12-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Create symlinks for python and pip
-RUN ln -s /usr/bin/python3.12 /usr/bin/python && \
-    ln -s /usr/bin/python3.12 /usr/bin/python3
-
 WORKDIR /app
+
+# Create virtual environment (required on Ubuntu 24.04 due to PEP 668)
+RUN python3.12 -m venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy requirements first for better caching
 COPY requirements.txt .
